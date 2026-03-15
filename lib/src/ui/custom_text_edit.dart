@@ -134,14 +134,30 @@ class CustomTextEditState extends State<CustomTextEdit> with TextInputClient {
   }
 
   KeyEventResult _onKeyEvent(FocusNode focusNode, KeyEvent event) {
-    if (_currentEditingState.composing.isCollapsed) {
-      return widget.onKeyEvent(focusNode, event);
+    // When a soft keyboard input connection is active, suppress character-
+    // producing KeyDownEvents. The IME path (updateEditingValue) is the
+    // authoritative source for text. Without this, Android sends BOTH a
+    // KeyDownEvent AND an updateEditingValue for each keystroke, causing
+    // double input. Let modifier combos (Ctrl+C, etc.) and special keys
+    // (arrows, backspace) through since they don't have a character.
+    if (hasInputConnection &&
+        event is KeyDownEvent &&
+        event.character != null &&
+        event.character!.isNotEmpty) {
+      final hasModifier =
+          HardwareKeyboard.instance.isControlPressed ||
+          HardwareKeyboard.instance.isAltPressed ||
+          HardwareKeyboard.instance.isMetaPressed;
+      if (!hasModifier) {
+        return KeyEventResult.skipRemainingHandlers;
+      }
     }
 
-    // Issue #143: Only skip character key events during composition.
-    // Allow modifier and special keys (Ctrl, Alt, etc.) through.
-    if (event is KeyDownEvent && event.character != null) {
-      return KeyEventResult.skipRemainingHandlers;
+    if (!_currentEditingState.composing.isCollapsed) {
+      // Issue #143: Only skip character key events during composition.
+      if (event is KeyDownEvent && event.character != null) {
+        return KeyEventResult.skipRemainingHandlers;
+      }
     }
 
     return widget.onKeyEvent(focusNode, event);
