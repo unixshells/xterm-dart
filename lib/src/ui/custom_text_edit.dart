@@ -135,21 +135,25 @@ class CustomTextEditState extends State<CustomTextEdit> with TextInputClient {
 
   KeyEventResult _onKeyEvent(FocusNode focusNode, KeyEvent event) {
     // When a soft keyboard input connection is active, suppress character-
-    // producing KeyDownEvents. The IME path (updateEditingValue) is the
-    // authoritative source for text. Without this, Android sends BOTH a
-    // KeyDownEvent AND an updateEditingValue for each keystroke, causing
-    // double input. Let modifier combos (Ctrl+C, etc.) and special keys
-    // (arrows, backspace) through since they don't have a character.
-    if (hasInputConnection &&
-        event is KeyDownEvent &&
-        event.character != null &&
-        event.character!.isNotEmpty) {
-      final hasModifier =
-          HardwareKeyboard.instance.isControlPressed ||
-          HardwareKeyboard.instance.isAltPressed ||
-          HardwareKeyboard.instance.isMetaPressed;
-      if (!hasModifier) {
+    // producing KeyDownEvents and Enter. The IME path (updateEditingValue +
+    // performAction) is the authoritative source for text and Enter.
+    // Without this, platforms send BOTH a KeyDownEvent AND IME callbacks,
+    // causing double input.
+    if (hasInputConnection && event is KeyDownEvent) {
+      // Suppress Enter — performAction(TextInputAction.newline) handles it.
+      if (event.logicalKey == LogicalKeyboardKey.enter ||
+          event.logicalKey == LogicalKeyboardKey.numpadEnter) {
         return KeyEventResult.skipRemainingHandlers;
+      }
+      // Suppress character-producing keys — updateEditingValue handles them.
+      if (event.character != null && event.character!.isNotEmpty) {
+        final hasModifier =
+            HardwareKeyboard.instance.isControlPressed ||
+            HardwareKeyboard.instance.isAltPressed ||
+            HardwareKeyboard.instance.isMetaPressed;
+        if (!hasModifier) {
+          return KeyEventResult.skipRemainingHandlers;
+        }
       }
     }
 
