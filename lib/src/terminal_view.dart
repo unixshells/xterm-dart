@@ -368,6 +368,11 @@ class TerminalViewState extends State<TerminalView> {
   }
 
   void _onInsert(String text) {
+    // Skip newlines — Enter is handled by onAction (performAction) to avoid
+    // double input. Android fires both updateEditingValue with '\n' and
+    // performAction(TextInputAction.newline) for the Enter key.
+    if (text == '\n' || text == '\r' || text == '\r\n') return;
+
     final key = charToTerminalKey(text.trim());
 
     // On mobile platforms there is no guarantee that virtual keyboard will
